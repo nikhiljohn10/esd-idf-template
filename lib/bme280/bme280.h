@@ -70,6 +70,61 @@ extern "C"
     float get_vpd(float temp_c, float hum_percent);
 
     /**
+     * @brief Calculate actual vapor pressure from temperature and humidity.
+     *
+     * @param temp_c      Temperature in degrees Celsius.
+     * @param hum_percent Relative humidity in percent (0–100).
+     * @return Actual vapor pressure in kilopascals (kPa).
+     */
+    float get_vapor_pressure(float temp_c, float hum_percent);
+
+    /**
+     * @brief Calculate dew point from temperature and humidity.
+     *
+     * Uses the Magnus-Tetens approximation.
+     *
+     * @param temp_c      Temperature in degrees Celsius.
+     * @param hum_percent Relative humidity in percent (0–100).
+     * @return Dew point in degrees Celsius.
+     */
+    float get_dew_point(float temp_c, float hum_percent);
+
+    /**
+     * @brief Calculate humidex from temperature and humidity.
+     *
+     * Uses the Canadian humidex formula and returns the apparent temperature
+     * in degrees Celsius.
+     *
+     * @param temp_c      Temperature in degrees Celsius.
+     * @param hum_percent Relative humidity in percent (0–100).
+     * @return Humidex in degrees Celsius.
+     */
+    float get_humidex(float temp_c, float hum_percent);
+
+    /**
+     * @brief Calculate moist-air enthalpy from temperature, humidity and pressure.
+     *
+     * Uses the humidity ratio derived from vapor pressure and ambient pressure.
+     *
+     * @param temp_c       Temperature in degrees Celsius.
+     * @param hum_percent  Relative humidity in percent (0–100).
+     * @param pressure_hpa Absolute pressure in hPa.
+     * @return Specific enthalpy in kJ/kg of dry air.
+     */
+    float get_enthalpy(float temp_c, float hum_percent, float pressure_hpa);
+
+    /**
+     * @brief Calculate absolute humidity from temperature and humidity.
+     *
+     * Returns the mass of water vapor per cubic meter of air.
+     *
+     * @param temp_c      Temperature in degrees Celsius.
+     * @param hum_percent Relative humidity in percent (0–100).
+     * @return Absolute humidity in grams per cubic meter (g/m^3).
+     */
+    float get_absolute_humidity(float temp_c, float hum_percent);
+
+    /**
      * @brief Calculate heat index from temperature and humidity.
      *
      * Uses the NOAA heat index formula with Celsius input and returns the

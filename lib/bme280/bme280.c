@@ -256,12 +256,52 @@ esp_err_t bme280_init(const bme280_config_t *config)
 
 float get_vpd(float temp_c, float hum_percent)
 {
-    // Calculate saturation vapor pressure (SVP) using Tetens formula
-    float svp = 0.61078f * expf((17.27f * temp_c) / (temp_c + 237.3f));
-    // Calculate actual vapor pressure (AVP)
-    float avp = svp * (hum_percent / 100.0f);
-    // VPD is the difference between SVP and AVP
+    const float svp = 0.61078f * expf((17.27f * temp_c) / (temp_c + 237.3f));
+    const float avp = svp * (hum_percent / 100.0f);
     return svp - avp; // in kPa
+}
+
+float get_vapor_pressure(float temp_c, float hum_percent)
+{
+    const float svp = 0.61078f * expf((17.27f * temp_c) / (temp_c + 237.3f));
+    return svp * (hum_percent / 100.0f); // in kPa
+}
+
+float get_dew_point(float temp_c, float hum_percent)
+{
+    float rh = hum_percent;
+    if (rh <= 0.0f)
+        rh = 0.1f;
+    else if (rh > 100.0f)
+        rh = 100.0f;
+
+    const float a = 17.27f;
+    const float b = 237.7f;
+    const float alpha = logf(rh / 100.0f) + (a * temp_c) / (b + temp_c);
+    return (b * alpha) / (a - alpha);
+}
+
+float get_humidex(float temp_c, float hum_percent)
+{
+    const float dew_c = get_dew_point(temp_c, hum_percent);
+    const float e = 6.11f * expf(5417.7530f * ((1.0f / 273.16f) -
+                                               (1.0f / (dew_c + 273.16f))));
+    return temp_c + 0.5555f * (e - 10.0f);
+}
+
+float get_enthalpy(float temp_c, float hum_percent, float pressure_hpa)
+{
+    const float pv = get_vapor_pressure(temp_c, hum_percent); // kPa
+    const float p = pressure_hpa / 10.0f;                     // convert hPa to kPa
+    const float w = (p > pv) ? (0.622f * pv) / (p - pv) : 0.0f;
+    return 1.006f * temp_c + w * (2501.0f + 1.86f * temp_c);
+}
+
+float get_absolute_humidity(float temp_c, float hum_percent)
+{
+    const float svp = 6.112f * expf((17.67f * temp_c) / (temp_c + 243.5f));
+    const float avp = svp * (hum_percent / 100.0f); // in hPa
+    return 216.7f * avp / (temp_c + 273.15f);       // g/m^3
 }
 
 float get_heat_index(float temp_c, float hum_percent)
