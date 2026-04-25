@@ -253,6 +253,16 @@ esp_err_t bme280_init(const bme280_config_t *config)
     return ESP_OK;
 }
 
+float get_vpd(float temp_c, float hum_percent)
+{
+    // Calculate saturation vapor pressure (SVP) using Tetens formula
+    float svp = 0.61078 * exp((17.27 * temp_c) / (temp_c + 237.3));
+    // Calculate actual vapor pressure (AVP)
+    float avp = svp * (hum_percent / 100.0f);
+    // VPD is the difference between SVP and AVP
+    return svp - avp; // in kPa
+}
+
 esp_err_t bme280_read(bme280_data_t *data)
 {
     if (!s_ctx.ready || !data)
@@ -287,8 +297,10 @@ esp_err_t bme280_read(bme280_data_t *data)
     uint32_t P = compensate_P(adc_P);
     uint32_t H = compensate_H(adc_H);
 
+    float press_hpa = P / 25600.0f; // Pressure is in Q24.8 Pa units, convert to hPa
     data->temperature = T / 100.0f;
-    data->pressure = (P / 256.0f) / 100.0f;
+    data->pressure = press_hpa;
+    data->pressure_bar = press_hpa / 1000.0f; // Convert hPa to bar
     data->humidity = H / 1024.0f;
     return ESP_OK;
 }

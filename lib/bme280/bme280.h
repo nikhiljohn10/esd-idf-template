@@ -24,9 +24,10 @@ extern "C"
      */
     typedef struct
     {
-        float temperature; /*!< Temperature in degrees Celsius */
-        float pressure;    /*!< Barometric pressure in hPa */
-        float humidity;    /*!< Relative humidity in %RH */
+        float temperature;  /*!< Temperature in degrees Celsius */
+        float pressure;     /*!< Barometric pressure in hPa */
+        float pressure_bar; /*!< Barometric pressure in bar */
+        float humidity;     /*!< Relative humidity in %RH */
     } bme280_data_t;
 
     /**
