@@ -22,27 +22,40 @@ uint8_t network_status = 0;
 
 static void screen_task(void *arg)
 {
-    ssd1306_handle_t ssd1306_handle = setup_screen();
+    ssd1306_handle_t ssd1306_handle = setup_screen(&(oled_config_t){
+        .i2c_port = I2C_NUM_0,
+        .sda_pin = 21,
+        .scl_pin = 22,
+    });
     while (1)
     {
         brightness_control(ssd1306_handle, led_brightness, 5);
         char line3[128] = {0};
         switch (network_status)
         {
-        case 1:  snprintf(line3, sizeof(line3), "Connected!");       break;
-        case 2:  snprintf(line3, sizeof(line3), "Syncing NTP...");   break;
-        case 3:  snprintf(line3, sizeof(line3), "Fetching IP...");   break;
-        case 4:  snprintf(line3, sizeof(line3), "%s", ip);           break;
+        case 1:
+            snprintf(line3, sizeof(line3), "Connected!");
+            break;
+        case 2:
+            snprintf(line3, sizeof(line3), "Syncing NTP...");
+            break;
+        case 3:
+            snprintf(line3, sizeof(line3), "Fetching IP...");
+            break;
+        case 4:
+            snprintf(line3, sizeof(line3), "%s", ip);
+            break;
         case 5:
             snprintf(line3, sizeof(line3), "Failed to connect");
             network_status = 0;
             break;
-        default: snprintf(line3, sizeof(line3), "Connecting...");    break;
+        default:
+            snprintf(line3, sizeof(line3), "Connecting...");
+            break;
         }
         wifi_icon_state_t wifi_state =
-            (network_status == 5) ? WIFI_ICON_FAILED :
-            (network_status == 0) ? WIFI_ICON_CONNECTING :
-            WIFI_ICON_CONNECTED;
+            (network_status == 5) ? WIFI_ICON_FAILED : (network_status == 0) ? WIFI_ICON_CONNECTING
+                                                                             : WIFI_ICON_CONNECTED;
         oled_render_home(ssd1306_handle, "LED Lamp!", wifi_state, line3, led_brightness);
         delay(25);
     }

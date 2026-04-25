@@ -78,7 +78,11 @@ static void alarm_task(void *arg)
 
 static void screen_task(void *arg)
 {
-    ssd1306_handle_t oled = setup_screen();
+    ssd1306_handle_t oled = setup_screen(&(oled_config_t){
+        .i2c_port = I2C_NUM_0,
+        .sda_pin = 21,
+        .scl_pin = 22,
+    });
     while (1)
     {
         char line[32];

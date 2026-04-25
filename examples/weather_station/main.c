@@ -13,20 +13,20 @@
  * Reads temperature, pressure and humidity from a BME280 sensor every 2 s
  * and renders the values on a 128x32 SSD1306 OLED.
  *
- * Wiring (defaults — change BME280_SDA/SCL below for your board):
- *   BME280   ->  ESP32
- *   VCC      ->  3V3
- *   GND      ->  GND
- *   SDA      ->  GPIO 21
- *   SCL      ->  GPIO 22
+ * Wiring (defaults — change the defines below for your board):
+ *   BME280 / OLED  ->  ESP32
+ *   VCC            ->  3V3
+ *   GND            ->  GND
+ *   SDA            ->  GPIO 21
+ *   SCL            ->  GPIO 22
  *
- * The OLED uses its own I2C bus (managed by the `oled` library), so the BME280
- * is placed on a separate I2C port to keep both drivers self-contained.
+ * Both devices share the same I2C bus (I2C_NUM_0). The i2c_bus library
+ * ensures the bus is created only once regardless of initialisation order.
  */
 
-#define BME280_I2C_PORT I2C_NUM_0
-#define BME280_SDA GPIO_NUM_21
-#define BME280_SCL GPIO_NUM_22
+#define I2C_PORT I2C_NUM_0
+#define I2C_SDA GPIO_NUM_21
+#define I2C_SCL GPIO_NUM_22
 
 static bme280_data_t g_sample;
 static bool g_have_sample = false;
@@ -34,9 +34,9 @@ static bool g_have_sample = false;
 static void sensor_task(void *arg)
 {
     bme280_config_t cfg = {
-        .i2c_port = BME280_I2C_PORT,
-        .sda_pin = BME280_SDA,
-        .scl_pin = BME280_SCL,
+        .i2c_port = I2C_PORT,
+        .sda_pin = I2C_SDA,
+        .scl_pin = I2C_SCL,
         .freq_hz = 100000,
     };
     if (bme280_init(&cfg) != ESP_OK)
@@ -62,7 +62,11 @@ static void sensor_task(void *arg)
 
 static void screen_task(void *arg)
 {
-    ssd1306_handle_t oled = setup_screen();
+    ssd1306_handle_t oled = setup_screen(&(oled_config_t){
+        .i2c_port = I2C_PORT,
+        .sda_pin = I2C_SDA,
+        .scl_pin = I2C_SCL,
+    });
     while (1)
     {
         char line[32];
