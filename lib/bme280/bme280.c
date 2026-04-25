@@ -10,6 +10,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "bme280.h"
+#include "i2c_bus.h"
 
 static const char *TAG = "BME280";
 
@@ -180,19 +181,12 @@ esp_err_t bme280_init(const bme280_config_t *config)
 
     memset(&s_ctx, 0, sizeof(s_ctx));
 
-    /* Create I2C master bus */
-    i2c_master_bus_config_t bus_cfg = {
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = config->i2c_port,
-        .scl_io_num = config->scl_pin,
-        .sda_io_num = config->sda_pin,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
-    };
-    esp_err_t err = i2c_new_master_bus(&bus_cfg, &s_ctx.bus);
+    /* Obtain the shared I2C master bus for this port. */
+    esp_err_t err = i2c_bus_get_or_create(config->i2c_port, config->sda_pin,
+                                          config->scl_pin, &s_ctx.bus);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "i2c_new_master_bus failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "i2c_bus_get_or_create failed: %s", esp_err_to_name(err));
         return err;
     }
 
