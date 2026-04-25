@@ -7,7 +7,7 @@ reusable C libraries, Unity unit tests, and a clean project structure.
 ## Features
 
 - **PlatformIO + ESP-IDF** build system targeting ESP32
-- 8 reusable utility libraries (ADC, dict, HTTP, JSON, LED, net, OLED, utils)
+- 10 reusable libraries (ADC, BME280, dict, HTTP, JSON, LED, net, OLED, utils, water_level)
 - **Unity** unit tests for hardware-independent code
 - Thread-safe `dict_t` hash map backed by FreeRTOS stripe locks
 - HTTP client with TLS support (`esp_http_client` wrapper)
@@ -62,13 +62,15 @@ reusable C libraries, Unity unit tests, and a clean project structure.
 │   └── config.h              # (gitignored) Local config with credentials
 ├── lib/
 │   ├── adc/                  # ADC sampling with moving-average
+│   ├── bme280/               # BME280 I2C temperature/pressure/humidity driver
 │   ├── dict/                 # Thread-safe hash map (FreeRTOS stripe locks)
 │   ├── http/                 # HTTP client (all methods, TLS)
 │   ├── json/                 # Flat JSON parser and encoder
 │   ├── led/                  # GPIO control and LEDC PWM dimming
 │   ├── net/                  # WiFi STA + SNTP time synchronisation
 │   ├── oled/                 # SSD1306 128×32 I2C OLED driver
-│   └── utils/                # MAX, MIN, delay helpers
+│   ├── utils/                # MAX, MIN, delay helpers
+│   └── water_level/          # Analog water-level sensor with calibration
 ├── src/
 │   └── main.c                # Application entry point — start here
 ├── test/
@@ -83,22 +85,26 @@ reusable C libraries, Unity unit tests, and a clean project structure.
 
 ## Libraries
 
-| Library | Description | Docs |
-|---------|-------------|------|
-| `adc`   | ADC oneshot sampling with configurable moving-average and delay | [docs/adc.md](docs/adc.md) |
-| `dict`  | Concurrent hash map — 64 buckets, 8 FreeRTOS mutex stripe locks, djb2 hash | [docs/dict.md](docs/dict.md) |
-| `http`  | `http_get`, `http_post`, `http_put`, … wrappers over `esp_http_client` with TLS bundle | [docs/http.md](docs/http.md) |
-| `json`  | Flat JSON object parser/encoder backed by `dict_t`; strings, numbers, bools, escape sequences | [docs/json.md](docs/json.md) |
-| `led`   | GPIO LED on/off and LEDC 8-bit PWM (5 kHz) dimming; network status blink patterns | [docs/led.md](docs/led.md) |
-| `net`   | WiFi STA with 5-retry event-group; SNTP sync via `pool.ntp.org` | [docs/net.md](docs/net.md) |
-| `oled`  | SSD1306 128×32 over I2C; 8×8 Latin font, bitmap rendering, animated WiFi icon, auto-dim | [docs/oled.md](docs/oled.md) |
-| `utils` | `MAX(a,b)`, `MIN(a,b)`, `delay(ms)` (wraps `vTaskDelay`) | [docs/utils.md](docs/utils.md) |
+| Library       | Description                                                                                     | Docs                                       |
+| ------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `adc`         | ADC oneshot sampling with configurable moving-average and delay                                 | [docs/adc.md](docs/adc.md)                 |
+| `bme280`      | I2C driver for the Bosch BME280 — compensated temperature, pressure and humidity in forced mode | [docs/bme280.md](docs/bme280.md)           |
+| `dict`        | Concurrent hash map — 64 buckets, 8 FreeRTOS mutex stripe locks, djb2 hash                      | [docs/dict.md](docs/dict.md)               |
+| `http`        | `http_get`, `http_post`, `http_put`, … wrappers over `esp_http_client` with TLS bundle          | [docs/http.md](docs/http.md)               |
+| `json`        | Flat JSON object parser/encoder backed by `dict_t`; strings, numbers, bools, escape sequences   | [docs/json.md](docs/json.md)               |
+| `led`         | GPIO LED on/off and LEDC 8-bit PWM (5 kHz) dimming; network status blink patterns               | [docs/led.md](docs/led.md)                 |
+| `net`         | WiFi STA with 5-retry event-group; SNTP sync via `pool.ntp.org`                                 | [docs/net.md](docs/net.md)                 |
+| `oled`        | SSD1306 128×32 over I2C; 8×8 Latin font, bitmap rendering, animated WiFi icon, auto-dim         | [docs/oled.md](docs/oled.md)               |
+| `utils`       | `MAX(a,b)`, `MIN(a,b)`, `delay(ms)` (wraps `vTaskDelay`)                                        | [docs/utils.md](docs/utils.md)             |
+| `water_level` | Analog water-level sensor on ADC1 with averaging and dry/full calibration to 0–100 %            | [docs/water_level.md](docs/water_level.md) |
 
 ## Examples
 
-| Example | Description |
-|---------|-------------|
-| [examples/wifi_led_lamp/](examples/wifi_led_lamp/) | WiFi-connected smart LED lamp — uses all libraries together: ADC light sensing, LEDC dimming, OLED display, WiFi, SNTP, HTTP, and JSON |
+| Example                                                  | Description                                                                                                                            |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| [examples/wifi_led_lamp/](examples/wifi_led_lamp/)       | WiFi-connected smart LED lamp — uses all libraries together: ADC light sensing, LEDC dimming, OLED display, WiFi, SNTP, HTTP, and JSON |
+| [examples/weather_station/](examples/weather_station/)   | Mini weather station — reads BME280 temperature/pressure/humidity and shows them on the OLED                                           |
+| [examples/water_level_tank/](examples/water_level_tank/) | Tank level monitor — analog water sensor on ADC1, OLED readout, low-water LED alarm                                                    |
 
 ---
 
@@ -119,11 +125,11 @@ pio test -e esp32dev
 pio test -e esp32dev --without-uploading --without-testing
 ```
 
-| Suite        | Tests | What is covered |
-|--------------|-------|-----------------|
-| `test_utils` | 10    | `MAX` / `MIN` edge cases |
+| Suite        | Tests | What is covered                                                 |
+| ------------ | ----- | --------------------------------------------------------------- |
+| `test_utils` | 10    | `MAX` / `MIN` edge cases                                        |
 | `test_dict`  | 17    | Create, set/get/delete, count, foreach, null safety, truncation |
-| `test_json`  | 13    | Parse (valid/invalid), encode, quote escaping, roundtrip |
+| `test_json`  | 13    | Parse (valid/invalid), encode, quote escaping, roundtrip        |
 
 ---
 
