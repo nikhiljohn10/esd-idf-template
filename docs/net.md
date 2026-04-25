@@ -24,24 +24,42 @@ if (err != ESP_OK) {
 ```
 
 **Behaviour:**
+
 - Registers event handlers for `WIFI_EVENT` (connect / disconnect) and `IP_EVENT` (got IP).
 - Retries up to 5 times before giving up.
 - Uses an `EventGroup` to block the caller — the function returns as soon as an IP is assigned or all retries fail.
 
 ---
 
-### `esp_err_t setup_network(void)`
+### `esp_err_t setup_network(const char *tz_str)`
 
-Synchronises system time using SNTP against `pool.ntp.org`. Blocks until the system clock is set, polling every second up to a 10-second timeout.
+Synchronises system time using SNTP against `pool.ntp.org`. Blocks until the clock is set, polling every second up to a 10-second timeout.
 
 Must be called **after** `setup_wifi()` succeeds.
 
-Returns `ESP_OK` once the time is set.
+| Return value          | Meaning                                              |
+| --------------------- | ---------------------------------------------------- |
+| `ESP_OK`              | Time synced successfully                             |
+| `ESP_FAIL`            | NTP sync timed out after 10 s                        |
+| `ESP_ERR_INVALID_ARG` | `tz_str` is non-NULL but not a valid POSIX TZ string |
+
+**`tz_str`** — optional POSIX timezone string applied after sync. Pass `NULL` to skip timezone configuration.
 
 ```c
-setup_network();
-// system clock is now valid — TLS certificate dates will validate correctly
+// No timezone config
+setup_network(NULL);
+
+// India Standard Time
+setup_network("IST-5:30");
+
+// US Eastern with DST
+setup_network("EST5EDT,M3.2.0,M11.1.0");
 ```
+
+POSIX TZ format: `StdName±offset[DstName[offset][,rule]]`  
+Examples: `"UTC0"`, `"IST-5:30"`, `"CET-1CEST,M3.5.0,M10.5.0/3"`
+
+If an invalid string is passed (e.g. a Windows-style name like `"India Standard Time"`), the function logs an error and returns `ESP_ERR_INVALID_ARG` without initialising SNTP.
 
 **Why this is needed:** ESP32 has no battery-backed RTC. The system clock starts at the Unix epoch (1970). TLS handshakes will fail with certificate errors until the time is corrected via SNTP.
 
@@ -61,7 +79,7 @@ void app_main(void) {
     }
     printf("Connected\n");
 
-    setup_network(); // sync time for TLS
+    setup_network("UTC0"); // sync time for TLS (pass NULL to skip timezone)
     printf("Time synced\n");
 
     // Safe to make HTTPS requests now
