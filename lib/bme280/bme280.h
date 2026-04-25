@@ -56,6 +56,35 @@ extern "C"
      */
     esp_err_t bme280_read(bme280_data_t *data);
 
+    /**
+     * @brief Calculate vapor pressure deficit from temperature and humidity.
+     *
+     * Uses the Tetens formula to compute saturation vapor pressure from
+     * temperature, then subtracts the actual vapor pressure based on relative
+     * humidity.
+     *
+     * @param temp_c      Temperature in degrees Celsius.
+     * @param hum_percent Relative humidity in percent (0–100).
+     * @return Vapor pressure deficit in kilopascals (kPa).
+     */
+    float get_vpd(float temp_c, float hum_percent);
+
+    /**
+     * @brief Calculate heat index from temperature and humidity.
+     *
+     * Uses the NOAA heat index formula with Celsius input and returns the
+     * apparent temperature in degrees Celsius.
+     *
+     * If the temperature is below 80 °F (26.7 °C), this function returns the
+     * actual air temperature because heat-index corrections are not typically
+     * applied in cooler conditions.
+     *
+     * @param temp_c      Temperature in degrees Celsius.
+     * @param hum_percent Relative humidity in percent (0–100).
+     * @return Heat index in degrees Celsius.
+     */
+    float get_heat_index(float temp_c, float hum_percent);
+
 #ifdef __cplusplus
 }
 #endif

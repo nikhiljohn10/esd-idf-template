@@ -6,6 +6,7 @@
  */
 
 #include <string.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -256,11 +257,46 @@ esp_err_t bme280_init(const bme280_config_t *config)
 float get_vpd(float temp_c, float hum_percent)
 {
     // Calculate saturation vapor pressure (SVP) using Tetens formula
-    float svp = 0.61078 * exp((17.27 * temp_c) / (temp_c + 237.3));
+    float svp = 0.61078f * expf((17.27f * temp_c) / (temp_c + 237.3f));
     // Calculate actual vapor pressure (AVP)
     float avp = svp * (hum_percent / 100.0f);
     // VPD is the difference between SVP and AVP
     return svp - avp; // in kPa
+}
+
+float get_heat_index(float temp_c, float hum_percent)
+{
+    float rh = hum_percent;
+    if (rh < 0.0f)
+        rh = 0.0f;
+    else if (rh > 100.0f)
+        rh = 100.0f;
+
+    float t_f = temp_c * 9.0f / 5.0f + 32.0f;
+    if (t_f < 80.0f)
+        return temp_c;
+
+    float hi_f = -42.379f +
+                 2.04901523f * t_f +
+                 10.14333127f * rh +
+                 -0.22475541f * t_f * rh +
+                 -6.83783e-3f * t_f * t_f +
+                 -5.481717e-2f * rh * rh +
+                 1.22874e-3f * t_f * t_f * rh +
+                 8.5282e-4f * t_f * rh * rh +
+                 -1.99e-6f * t_f * t_f * rh * rh;
+
+    if (rh < 13.0f && t_f >= 80.0f && t_f <= 112.0f)
+    {
+        hi_f -= ((13.0f - rh) * 0.25f) *
+                sqrtf((17.0f - fabsf(t_f - 95.0f)) * 0.05882f);
+    }
+    else if (rh > 85.0f && t_f >= 80.0f && t_f <= 87.0f)
+    {
+        hi_f += ((rh - 85.0f) * 0.1f) * ((87.0f - t_f) * 0.2f);
+    }
+
+    return (hi_f - 32.0f) * 5.0f / 9.0f;
 }
 
 esp_err_t bme280_read(bme280_data_t *data)
