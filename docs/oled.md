@@ -9,23 +9,39 @@ SSD1306 128x32 OLED display driver with text rendering, bitmap drawing, animated
 
 ## Hardware
 
-| Signal | GPIO |
-|--------|------|
-| I2C SDA | 21 |
-| I2C SCL | 22 |
+| Signal       | GPIO        |
+| ------------ | ----------- |
+| I2C SDA      | 21          |
+| I2C SCL      | 22          |
 | Display size | 128 × 32 px |
 
 ---
 
 ## API
 
-### `ssd1306_handle_t setup_screen(void)`
-
-Initialises the I2C bus and SSD1306 display. Returns a handle required by all other functions.
+### `oled_config_t`
 
 ```c
-ssd1306_handle_t oled = setup_screen();
+typedef struct {
+    i2c_port_num_t i2c_port; // I2C peripheral, e.g. I2C_NUM_0
+    int sda_pin;             // GPIO for SDA
+    int scl_pin;             // GPIO for SCL
+} oled_config_t;
 ```
+
+### `ssd1306_handle_t setup_screen(const oled_config_t *config)`
+
+Obtains the shared I2C bus and initialises the SSD1306 display. Returns a handle required by all other functions.
+
+```c
+ssd1306_handle_t oled = setup_screen(&(oled_config_t){
+    .i2c_port = I2C_NUM_0,
+    .sda_pin  = 21,
+    .scl_pin  = 22,
+});
+```
+
+Because `setup_screen()` uses the `i2c_bus` shared bus manager, it is safe to call even if `bme280_init()` has already been called on the same port and pins — the bus will be reused rather than re-created.
 
 ---
 

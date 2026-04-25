@@ -1,5 +1,6 @@
 #include "ssd1306.h"
 #include "oled.h"
+#include "i2c_bus.h"
 #include "font_latin_8x8.h"
 #include <esp_timer.h>
 #include <string.h>
@@ -14,18 +15,11 @@ static const uint8_t OLED_IDLE_CONTRAST = 0x01;
 const uint8_t zero_buf[4 * 128] = {0};
 uint8_t *clear_screen_buffer = (uint8_t *)zero_buf;
 
-ssd1306_handle_t setup_screen(void)
+ssd1306_handle_t setup_screen(const oled_config_t *config)
 {
-    i2c_master_bus_config_t i2c_bus_config = {
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = I2C_NUM_0,
-        .scl_io_num = 22,
-        .sda_io_num = 21,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
-    };
     i2c_master_bus_handle_t bus_handle;
-    ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_config, &bus_handle));
+    ESP_ERROR_CHECK(i2c_bus_get_or_create(config->i2c_port, config->sda_pin,
+                                          config->scl_pin, &bus_handle));
 
     ssd1306_handle_t handle;
     ssd1306_config_t ssd1306_config = I2C_SSD1306_128x32_CONFIG_DEFAULT;
