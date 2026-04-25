@@ -13,6 +13,7 @@ esp_err_t setup_wifi(const char *ssid, const char *password);
  * Synchronises system time via SNTP (pool.ntp.org).
  * Needed for TLS certificate validation. Blocks up to ~10 s.
  */
-esp_err_t setup_network(void);
+// tz_str: POSIX timezone string (e.g. "IST-5:30", "UTC0"). Pass NULL to skip.
+esp_err_t setup_network(const char *tz_str);
 
 #endif // NET_H

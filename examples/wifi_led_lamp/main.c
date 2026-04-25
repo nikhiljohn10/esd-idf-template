@@ -12,7 +12,9 @@
 #include "net.h"
 #include "http.h"
 #include "json.h"
-#include "config.h"
+
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASSWORD "your_wifi_password"
 
 portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
 int led_brightness;
@@ -103,7 +105,7 @@ static void http_task()
     taskENTER_CRITICAL(&my_spinlock);
     network_status = 2; // "Syncing NTP..." — set while waiting for NTP sync
     taskEXIT_CRITICAL(&my_spinlock);
-    setup_network(); // NTP sync (may take up to 10s)
+    setup_network(NULL); // NTP sync (may take up to 10s)
 
     while (1)
     {

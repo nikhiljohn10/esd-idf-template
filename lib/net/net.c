@@ -8,6 +8,7 @@
 #include "esp_log.h"
 #include "esp_sntp.h"
 #include "nvs_flash.h"
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -110,20 +111,32 @@ esp_err_t setup_wifi(const char *ssid, const char *password)
 // Network services (NTP)
 // ---------------------------------------------------------------------------
 
-esp_err_t setup_network(void)
+esp_err_t setup_network(const char *tz_str)
 {
     esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
     esp_sntp_setservername(0, "pool.ntp.org");
     esp_sntp_init();
 
-    // Wait up to 10 s for a valid time (needed for TLS cert validation)
-    time_t now = 0;
-    struct tm timeinfo = {0};
-    for (int i = 0; i < 10 && timeinfo.tm_year < (2020 - 1900); i++)
+    if (tz_str)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        time(&now);
-        localtime_r(&now, &timeinfo);
+        setenv("TZ", tz_str, 1);
+        tzset();
     }
+
+    int retry = 0;
+    const int retry_count = 10;
+    while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count)
+    {
+        ESP_LOGI(TAG, "Waiting for NTP sync... (%d/%d)", retry, retry_count);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    if (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET)
+    {
+        ESP_LOGE(TAG, "NTP sync failed after %d s", retry_count);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "NTP time synced");
     return ESP_OK;
 }
