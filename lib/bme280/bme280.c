@@ -175,10 +175,14 @@ static uint32_t compensate_H(int32_t adc_H)
 
 /* ── Public API ──────────────────────────────────────────────────────────── */
 
-esp_err_t bme280_init(const bme280_config_t *config)
+esp_err_t bme280_init(const bme280_config_t *config, bme280_data_t **data)
 {
-    if (!config)
+    if (!config || !data)
         return ESP_ERR_INVALID_ARG;
+
+    *data = calloc(1, sizeof(bme280_data_t));
+    if (!*data)
+        return ESP_ERR_NO_MEM;
 
     memset(&s_ctx, 0, sizeof(s_ctx));
 

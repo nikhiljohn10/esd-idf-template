@@ -42,7 +42,7 @@ extern "C"
      * @param[in] config  Pointer to pin/bus configuration.
      * @return ESP_OK on success, otherwise an esp_err_t error code.
      */
-    esp_err_t bme280_init(const bme280_config_t *config);
+    esp_err_t bme280_init(const bme280_config_t *config, bme280_data_t **data);
 
     /**
      * @brief Trigger a single forced-mode measurement and return the results.
