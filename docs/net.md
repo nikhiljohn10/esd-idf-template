@@ -6,83 +6,137 @@ WiFi STA connection and SNTP time synchronisation.
 
 ---
 
-## API
+## Overview
 
-### `esp_err_t setup_wifi(const char *ssid, const char *password)`
+`net_start()` is non-blocking. It spawns two background FreeRTOS tasks:
 
-Initialises NVS, the TCP/IP stack, and the WiFi driver in station mode. Attempts to connect to the given network and blocks until an IP address is assigned or all retries are exhausted.
+- **`wifi_init_task`** — Initialises the TCP/IP stack and WiFi driver, connects to the network, and retries on disconnect.
+- **`ntp_sync_task`** — Waits for an IP address, then syncs via SNTP and sets the configured timezone.
 
-Returns `ESP_OK` on success, or an error code on failure.
-
-```c
-#include "net.h"
-
-esp_err_t err = setup_wifi("my-network", "my-password");
-if (err != ESP_OK) {
-    printf("WiFi failed: %s\n", esp_err_to_name(err));
-}
-```
-
-**Behaviour:**
-
-- Registers event handlers for `WIFI_EVENT` (connect / disconnect) and `IP_EVENT` (got IP).
-- Retries up to 5 times before giving up.
-- Uses an `EventGroup` to block the caller — the function returns as soon as an IP is assigned or all retries fail.
+`app_main` can continue immediately after `net_start()` returns. Use `is_wifi_connected()` and `is_ntp_synced()` to poll status.
 
 ---
 
-### `esp_err_t setup_network(const char *tz_str)`
+## API
 
-Synchronises system time using SNTP against `pool.ntp.org`. Blocks until the clock is set, polling every second up to a 10-second timeout.
+### `esp_err_t net_start(const char *ssid, const char *password, const char *tz_str)`
 
-Must be called **after** `setup_wifi()` succeeds.
+Launches WiFi + NTP background tasks. Returns immediately.
 
-| Return value          | Meaning                                              |
-| --------------------- | ---------------------------------------------------- |
-| `ESP_OK`              | Time synced successfully                             |
-| `ESP_FAIL`            | NTP sync timed out after 10 s                        |
-| `ESP_ERR_INVALID_ARG` | `tz_str` is non-NULL but not a valid POSIX TZ string |
+- `ssid` / `password` — WiFi credentials.
+- `tz_str` — POSIX timezone string applied after NTP sync. Pass `NULL` to use UTC.
 
-**`tz_str`** — optional POSIX timezone string applied after sync. Pass `NULL` to skip timezone configuration.
+Returns `ESP_OK` if the tasks were created successfully.
 
 ```c
-// No timezone config
-setup_network(NULL);
+#include "net.h"
+#include "config.h" // WIFI_SSID, WIFI_PASSWORD
 
-// India Standard Time
-setup_network("IST-5:30");
-
-// US Eastern with DST
-setup_network("EST5EDT,M3.2.0,M11.1.0");
+void app_main(void) {
+    net_start(WIFI_SSID, WIFI_PASSWORD, "IST-5:30");
+    // returns immediately — WiFi connects in the background
+}
 ```
 
-POSIX TZ format: `StdName±offset[DstName[offset][,rule]]`  
-Examples: `"UTC0"`, `"IST-5:30"`, `"CET-1CEST,M3.5.0,M10.5.0/3"`
+**`tz_str` examples:**
 
-If an invalid string is passed (e.g. a Windows-style name like `"India Standard Time"`), the function logs an error and returns `ESP_ERR_INVALID_ARG` without initialising SNTP.
+| Region | String |
+|---|---|
+| UTC | `"UTC0"` |
+| India Standard Time | `"IST-5:30"` |
+| US Eastern with DST | `"EST5EDT,M3.2.0,M11.1.0"` |
+| Central Europe with DST | `"CET-1CEST,M3.5.0,M10.5.0/3"` |
 
-**Why this is needed:** ESP32 has no battery-backed RTC. The system clock starts at the Unix epoch (1970). TLS handshakes will fail with certificate errors until the time is corrected via SNTP.
+POSIX TZ format: `StdName±offset[DstName[offset][,rule]]`
+
+---
+
+### `bool is_wifi_connected(void)`
+
+Returns `true` if the station has an IP address. Thread-safe (reads an EventGroup bit).
+
+```c
+if (is_wifi_connected()) {
+    printf("IP assigned\n");
+}
+```
+
+---
+
+### `bool is_ntp_synced(void)`
+
+Returns `true` once the SNTP sync has completed and the system clock is valid. Thread-safe (reads a `volatile` flag).
+
+```c
+if (is_ntp_synced()) {
+    printf("Clock is accurate\n");
+}
+```
+
+---
+
+### `const char *get_ntp_time_string(void)`
+
+Returns the current wall-clock time as a 12-hour `"HH:MM:SS AM/PM"` string.
+
+- Backed by a 12-byte static buffer — not re-entrant.
+- Returns `"--:--:-- --"` if NTP has not yet synced.
+
+```c
+printf("Time: %s\n", get_ntp_time_string());
+```
+
+---
+
+### `const char *get_ntp_date_string(void)`
+
+Returns the current date as an `"YYYY-MM-DD"` string.
+
+- Backed by an 11-byte static buffer — not re-entrant.
+- Returns `"----/--/--"` if NTP has not yet synced.
+
+```c
+printf("Date: %s\n", get_ntp_date_string());
+```
+
+---
+
+### `void wait_for_sec(int seconds)`
+
+Phase-locked sleep that wakes at the next whole-second boundary on the wall clock, then waits an additional `seconds - 1` full seconds. This lets a timed loop stay aligned to the real-time clock rather than drifting.
+
+```c
+while (1) {
+    printf("%s\n", get_ntp_time_string());
+    wait_for_sec(1); // wakes exactly at the next whole second
+}
+```
 
 ---
 
 ## Example
 
 ```c
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "net.h"
 #include "config.h" // WIFI_SSID, WIFI_PASSWORD
-#include <stdio.h>
+#include "utils.h"
 
 void app_main(void) {
-    if (setup_wifi(WIFI_SSID, WIFI_PASSWORD) != ESP_OK) {
-        printf("Failed to connect\n");
-        return;
+    net_start(WIFI_SSID, WIFI_PASSWORD, "UTC0");
+
+    // Other initialisation can happen here while WiFi connects...
+
+    while (!is_ntp_synced()) {
+        delay(500);
     }
-    printf("Connected\n");
+    printf("Date: %s  Time: %s\n", get_ntp_date_string(), get_ntp_time_string());
 
-    setup_network("UTC0"); // sync time for TLS (pass NULL to skip timezone)
-    printf("Time synced\n");
-
-    // Safe to make HTTPS requests now
+    while (1) {
+        wait_for_sec(1);
+        printf("%s\n", get_ntp_time_string());
+    }
 }
 ```
 
@@ -90,7 +144,8 @@ void app_main(void) {
 
 ## Notes
 
-- `setup_wifi()` stores SSID and password in static buffers; it is safe to pass stack strings.
-- Calling `setup_wifi()` again without a reboot is not supported — initialise once at startup.
-- If your application does not need TLS, you can skip `setup_network()`.
+- Credentials are stored in static buffers inside `net_start()`; stack strings are safe to pass.
+- Call `net_start()` only once per boot. Reinitialising WiFi without a reboot is not supported.
 - WiFi credentials should be defined in `include/config.h` (gitignored). See `include/config.h.example`.
+- If your application does not need accurate time, you can ignore `is_ntp_synced()` and the time-string functions.
+- The string buffers returned by `get_ntp_time_string()` and `get_ntp_date_string()` are overwritten on each call — copy the result if you need to hold it across calls.

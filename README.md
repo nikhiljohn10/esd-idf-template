@@ -11,7 +11,7 @@ reusable C libraries, Unity unit tests, and a clean project structure.
 - **Unity** unit tests for hardware-independent code
 - Thread-safe `dict_t` hash map backed by FreeRTOS stripe locks
 - HTTP client with TLS support (`esp_http_client` wrapper)
-- SSD1306 128×32 OLED driver with text and bitmap rendering
+- SSD1306 128×32 OLED driver with scrolling text, bitmap rendering, and drawing primitives
 - Safe credential handling via a gitignored `config.h`
 
 ---
@@ -88,13 +88,13 @@ reusable C libraries, Unity unit tests, and a clean project structure.
 | Library       | Description                                                                                     | Docs                                       |
 | ------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | `adc`         | ADC oneshot sampling with configurable moving-average and delay                                 | [docs/adc.md](docs/adc.md)                 |
-| `bme280`      | I2C driver for the Bosch BME280 — compensated temperature, pressure and humidity in forced mode | [docs/bme280.md](docs/bme280.md)           |
+| `bme280`      | I2C driver for the Bosch BME280 — temperature, pressure (`hPa` + `bar`) and humidity; atmospheric helpers: VPD, dew point, humidex, heat index, enthalpy, absolute humidity | [docs/bme280.md](docs/bme280.md)           |
 | `dict`        | Concurrent hash map — 64 buckets, 8 FreeRTOS mutex stripe locks, djb2 hash                      | [docs/dict.md](docs/dict.md)               |
 | `http`        | `http_get`, `http_post`, `http_put`, … wrappers over `esp_http_client` with TLS bundle          | [docs/http.md](docs/http.md)               |
 | `json`        | Flat JSON object parser/encoder backed by `dict_t`; strings, numbers, bools, escape sequences   | [docs/json.md](docs/json.md)               |
 | `led`         | GPIO LED on/off and LEDC 8-bit PWM (5 kHz) dimming; network status blink patterns               | [docs/led.md](docs/led.md)                 |
-| `net`         | WiFi STA with 5-retry event-group; SNTP sync via `pool.ntp.org`                                 | [docs/net.md](docs/net.md)                 |
-| `oled`        | SSD1306 128×32 over I2C; 8×8 Latin font, bitmap rendering, animated WiFi icon, auto-dim         | [docs/oled.md](docs/oled.md)               |
+| `net`         | Non-blocking `net_start()` launches background WiFi + NTP tasks; `is_wifi_connected()`, `is_ntp_synced()`, `get_ntp_time_string()`, `get_ntp_date_string()`, `wait_for_sec()` | [docs/net.md](docs/net.md)                 |
+| `oled`        | SSD1306 128×32 over I2C; 8×8 Latin font, scrolling ticker (`set_text_scroll`), bitmap rendering, drawing primitives, animated WiFi icon, auto-dim | [docs/oled.md](docs/oled.md)               |
 | `utils`       | `MAX(a,b)`, `MIN(a,b)`, `delay(ms)` (wraps `vTaskDelay`)                                        | [docs/utils.md](docs/utils.md)             |
 | `water_level` | Analog water-level sensor on ADC1 with averaging and dry/full calibration to 0–100 %            | [docs/water_level.md](docs/water_level.md) |
 

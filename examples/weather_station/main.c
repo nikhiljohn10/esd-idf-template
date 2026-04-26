@@ -39,7 +39,8 @@ static void sensor_task(void *arg)
         .scl_pin = I2C_SCL,
         .freq_hz = 100000,
     };
-    if (bme280_init(&cfg) != ESP_OK)
+    bme280_data_t *s = NULL;
+    if (bme280_init(&cfg, &s) != ESP_OK)
     {
         printf("BME280 init failed\n");
         vTaskDelete(NULL);
@@ -48,13 +49,12 @@ static void sensor_task(void *arg)
 
     while (1)
     {
-        bme280_data_t s;
-        if (bme280_read(&s) == ESP_OK)
+        if (bme280_read(s) == ESP_OK)
         {
-            g_sample = s;
+            g_sample = *s;
             g_have_sample = true;
             printf("T=%.2f C  P=%.2f hPa  RH=%.1f %%\n",
-                   s.temperature, s.pressure, s.humidity);
+                   s->temperature, s->pressure, s->humidity);
         }
         delay(2000);
     }
@@ -62,7 +62,7 @@ static void sensor_task(void *arg)
 
 static void screen_task(void *arg)
 {
-    ssd1306_handle_t oled = setup_screen(&(oled_config_t){
+    oled_handle_t oled = setup_screen(&(oled_config_t){
         .i2c_port = I2C_PORT,
         .sda_pin = I2C_SDA,
         .scl_pin = I2C_SCL,
@@ -81,7 +81,7 @@ static void screen_task(void *arg)
         {
             snprintf(line, sizeof(line), "Reading...");
         }
-        oled_render_home(oled, "Weather", WIFI_ICON_CONNECTED, line, 0);
+        oled_render_home(oled, "Weather", WIFI_ICON_CONNECTED, line);
         delay(500);
     }
 }
