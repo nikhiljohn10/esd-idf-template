@@ -6,6 +6,10 @@
 extern const uint8_t zero_buf[4 * 128];
 extern uint8_t *clear_screen_buffer;
 
+/* Forward-declare the opaque context so oled_anim.h can use oled_handle_t. */
+struct oled_context_t;
+typedef struct oled_context_t *oled_handle_t;
+
 /**
  * @brief I2C pin and port configuration for the OLED display.
  */
@@ -16,16 +20,12 @@ typedef struct
     int scl_pin;             /*!< GPIO number for SCL */
 } oled_config_t;
 
-/** Opaque handle for an OLED display managed by this library. */
-struct oled_context_t;
-typedef struct oled_context_t *oled_handle_t;
+/* Constants shared across modules and application code */
+#include "oled_const.h"
 
-typedef enum
-{
-    WIFI_ICON_CONNECTING = 0,
-    WIFI_ICON_CONNECTED,
-    WIFI_ICON_FAILED,
-} wifi_icon_state_t;
+/* Icon and animation sub-modules — re-exported so callers only need oled.h */
+#include "oled_icon.h"
+#include "oled_anim.h"
 
 /**
  * @brief Fill the display with a sequence of test patterns to verify every pixel.
@@ -45,10 +45,15 @@ void oled_pixel_test(oled_handle_t handle, uint32_t hold_ms);
 void oled_clear(oled_handle_t handle);
 /** Push the current pixel buffer to the display hardware. */
 void oled_show(oled_handle_t handle);
-void set_latin_text(oled_handle_t handle, const char *text, int xpos, int ypos);
-void draw_bitmap_8x8(oled_handle_t handle, const uint8_t *bitmap, int xpos, int ypos);
-void draw_wifi_icon(oled_handle_t handle, wifi_icon_state_t state, int xpos, int ypos);
-void oled_render_home(oled_handle_t handle, const char *title, wifi_icon_state_t wifi_state, const char *status_text, int led_brightness);
+void set_text(oled_handle_t handle, const char *text, int xpos, int ypos);
+
+/**
+ * Scroll text right-to-left across one row. One call = one full pass.
+ * speed: pixels per second (e.g. 30 for a smooth ticker).
+ * Wrap in a loop for continuous scrolling.
+ */
+void set_text_scroll(oled_handle_t handle, const char *text, int ypos, int speed);
+
 esp_err_t brightness_control(oled_handle_t handle, int value, int timeout_seconds);
 oled_handle_t setup_screen(const oled_config_t *config);
 
