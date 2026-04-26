@@ -16,6 +16,10 @@ typedef struct
     int scl_pin;             /*!< GPIO number for SCL */
 } oled_config_t;
 
+/** Opaque handle for an OLED display managed by this library. */
+struct oled_context_t;
+typedef struct oled_context_t *oled_handle_t;
+
 typedef enum
 {
     WIFI_ICON_CONNECTING = 0,
@@ -23,11 +27,29 @@ typedef enum
     WIFI_ICON_FAILED,
 } wifi_icon_state_t;
 
-void set_latin_text(ssd1306_handle_t handle, const char *text, int xpos, int ypos);
-void draw_bitmap_8x8(ssd1306_handle_t handle, const uint8_t *bitmap, int xpos, int ypos);
-void draw_wifi_icon(ssd1306_handle_t handle, wifi_icon_state_t state, int xpos, int ypos);
-void oled_render_home(ssd1306_handle_t handle, const char *title, wifi_icon_state_t wifi_state, const char *status_text, int led_brightness);
-esp_err_t brightness_control(ssd1306_handle_t handle, int value, int timeout_seconds);
-ssd1306_handle_t setup_screen(const oled_config_t *config);
+/**
+ * @brief Fill the display with a sequence of test patterns to verify every pixel.
+ *
+ * Patterns shown (each held for hold_ms milliseconds):
+ *   1. All pixels ON  — confirms no dead columns/rows
+ *   2. Checkerboard   — reveals stuck-on/off neighbours
+ *   3. Vertical stripes (2 px wide)
+ *   4. Horizontal stripes (2 px tall)
+ *   5. Border rectangle — checks corners and edges
+ *
+ * The display is cleared before returning.
+ */
+void oled_pixel_test(oled_handle_t handle, uint32_t hold_ms);
+
+/** Clear the display's pixel buffer (does not push to hardware). */
+void oled_clear(oled_handle_t handle);
+/** Push the current pixel buffer to the display hardware. */
+void oled_show(oled_handle_t handle);
+void set_latin_text(oled_handle_t handle, const char *text, int xpos, int ypos);
+void draw_bitmap_8x8(oled_handle_t handle, const uint8_t *bitmap, int xpos, int ypos);
+void draw_wifi_icon(oled_handle_t handle, wifi_icon_state_t state, int xpos, int ypos);
+void oled_render_home(oled_handle_t handle, const char *title, wifi_icon_state_t wifi_state, const char *status_text, int led_brightness);
+esp_err_t brightness_control(oled_handle_t handle, int value, int timeout_seconds);
+oled_handle_t setup_screen(const oled_config_t *config);
 
 #endif // OLED_H
