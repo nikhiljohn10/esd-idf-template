@@ -28,6 +28,13 @@ extern "C"
     esp_err_t i2c_bus_get_or_create(i2c_port_num_t port, int sda_pin, int scl_pin,
                                     i2c_master_bus_handle_t *out_handle);
 
+    /**
+     * @brief Probe every valid 7-bit I2C address and log any responding devices.
+     *
+     * @param[in] bus  Bus handle obtained from i2c_bus_get_or_create().
+     */
+    void i2c_bus_scan(i2c_master_bus_handle_t bus);
+
 #ifdef __cplusplus
 }
 #endif

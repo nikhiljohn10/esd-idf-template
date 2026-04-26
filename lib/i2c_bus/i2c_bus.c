@@ -40,6 +40,21 @@ static SemaphoreHandle_t get_mutex(void)
     return s_mutex;
 }
 
+void i2c_bus_scan(i2c_master_bus_handle_t bus)
+{
+    ESP_LOGI(TAG, "Scanning I2C bus...");
+    int found = 0;
+    for (uint8_t addr = 0x03; addr < 0x78; addr++)
+    {
+        if (i2c_master_probe(bus, addr, 50) == ESP_OK)
+        {
+            ESP_LOGI(TAG, "  device found at 0x%02X", addr);
+            found++;
+        }
+    }
+    ESP_LOGI(TAG, "Scan complete: %d device(s) found", found);
+}
+
 esp_err_t i2c_bus_get_or_create(i2c_port_num_t port, int sda_pin, int scl_pin,
                                 i2c_master_bus_handle_t *out_handle)
 {
